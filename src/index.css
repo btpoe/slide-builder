@@ -1,0 +1,21 @@
+*, *::before, *::after {
+  box-sizing: inherit;
+}
+
+html {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 20px;
+  font-family: sans-serif;
+}
+
+body {
+  height: 100vh;
+}
+
+#root {
+  height: 100%;
+}
