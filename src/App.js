@@ -1,36 +1,42 @@
 import React, { Component } from 'react';
-import styled from 'styled-components';
-import DefaultForm from 'react-jsonschema-form';
+import { get, find, sortedIndexBy, last } from 'lodash';
 import schema, { uiSchema } from './schema';
+import {
+  Container,
+  Iframe,
+  IframeContainer,
+  Form,
+  SubmitWrap,
+  FileUpload,
+} from './Styled';
 import output from './output';
 
-const Container = styled.div`
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-`;
+const clamp = (min, max, value) => Math.min(Math.max(value, min), max);
 
-const Iframe = styled.iframe`
-  border: 0;
-  width: 100%;
-  height: 40vw;
-`;
+const slopeCalc = (slopes, value) => {
+  const match = find(slopes, ['width', value]);
+  if (match) {
+    return match.height;
+  }
+  const insertAt = sortedIndexBy(slopes, { width: value }, 'width');
+  if (!insertAt) {
+    return slopes[0].height;
+  }
+  if (!slopes[insertAt]) {
+    return last(slopes).height;
+  }
+  const upper = slopes[insertAt];
+  const lower = slopes[insertAt - 1];
+  const slope = (upper.height - lower.height) / (upper.width - lower.width);
+  const intercept = lower.height - (lower.width * slope);
+  return (value * slope) + intercept;
+};
 
-const Form = styled(DefaultForm)`
-  flex-grow: 1;
-  margin-top: 20px;
-  overflow: auto;
-`;
+const iframeHeight = width => slopeCalc([
+  { width: 320, height: 240 }, { width: 1440, height: 1024 },
+], clamp(320, 1440, width));
 
-const SubmitWrap = styled.div`
-  background: #fff;
-  border-top: 1px solid #ccc;
-  bottom: 0;
-  padding-top: 20px;
-  position: sticky;
-`;
-
-class App extends Component {
+export default class App extends Component {
   constructor(props) {
     super(props);
 
@@ -39,33 +45,71 @@ class App extends Component {
     };
 
     this.handleChange = this.handleChange.bind(this);
+    this.handleLoad = this.handleLoad.bind(this);
   }
 
   get output() {
     return output(this.state.formData);
   }
 
+  get viewportScale() {
+    const widthScale = window.innerWidth / this.state.formData.screenWidth;
+    const heightScale = (window.innerHeight * 0.4) / iframeHeight(this.state.formData.screenWidth);
+    return Math.min(widthScale, heightScale);
+  }
+
   handleChange({ formData }) {
     this.setState({ formData });
+  }
+
+  handleLoad(e) {
+    const file = get(e, 'target.files[0]');
+
+    if (!file) return;
+
+    const reader = new window.FileReader();
+
+    reader.onload = () =>
+      this.setState({
+        formData: JSON.parse(reader.result),
+      });
+
+    reader.readAsText(file);
   }
 
   render() {
     return (
       <Container>
-        <Iframe srcDoc={this.output} />
+        <IframeContainer>
+          <Iframe
+            srcDoc={this.output}
+            style={{
+              width: `${this.state.formData.screenWidth}px`,
+              height: `${iframeHeight(this.state.formData.screenWidth)}px`,
+              transform: `translate(-50%, -50%) scale(${this.viewportScale})`,
+            }}
+          />
+        </IframeContainer>
         <Form
           schema={schema}
           uiSchema={uiSchema}
           formData={this.state.formData}
           onChange={this.handleChange}
         >
-          <SubmitWrap>
-            <a href={`data:text/html,${this.output}`} download className="btn btn-info">Download</a>
+          <SubmitWrap className="btn-toolbar">
+            <div className="btn-group">
+              <a href={`data:text/html,${this.output}`} download className="btn btn-info">Download</a>
+            </div>
+            <div className="btn-group">
+              <a href={`data:application/json,${JSON.stringify(this.state.formData)}`} download="slide-config.json" className="btn btn-info">Save</a>
+              <FileUpload className="btn btn-info">
+                Load
+                <input type="file" onChange={this.handleLoad} />
+              </FileUpload>
+            </div>
           </SubmitWrap>
         </Form>
       </Container>
     );
   }
 }
-
-export default App;

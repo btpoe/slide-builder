@@ -2,6 +2,13 @@ export default {
   title: 'Slide Builder',
   type: 'object',
   properties: {
+    screenWidth: {
+      type: 'integer',
+      title: 'Screen Width',
+      minimum: 280,
+      maximum: 4000,
+      default: 1440,
+    },
     fonts: {
       type: 'array',
       title: 'Fonts',
@@ -87,6 +94,10 @@ export default {
 };
 
 export const uiSchema = {
+  screenWidth: {
+    'ui:widget': 'range',
+    classNames: 'u-sticky',
+  },
   background: {
     color: {
       'ui:widget': 'color',
