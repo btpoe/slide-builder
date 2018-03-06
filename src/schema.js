@@ -1,29 +1,33 @@
+import React from 'react';
+
 export default {
-  title: 'Slide Builder',
   type: 'object',
   properties: {
     screenWidth: {
       type: 'integer',
       title: 'Screen Width',
-      minimum: 280,
+      minimum: 0,
       maximum: 4000,
-      default: 1440,
-    },
-    fonts: {
-      type: 'array',
-      title: 'Fonts',
-      items: {
-        type: 'string',
-      },
     },
     background: {
       type: 'object',
       title: 'Background',
       properties: {
-        color: {
+        image: {
           type: 'string',
-          title: 'Color',
-          default: '#fff',
+          title: 'Image',
+        },
+        verticalAlignment: {
+          type: 'integer',
+          title: 'Vertical Focal Point (%)',
+          minimum: 0,
+          maximum: 100,
+        },
+        horizontalAlignment: {
+          type: 'integer',
+          title: 'Horizontal Focal Point (%)',
+          minimum: 0,
+          maximum: 100,
         },
       },
     },
@@ -33,38 +37,42 @@ export default {
       items: {
         type: 'object',
         properties: {
+          identity: {
+            type: 'integer',
+          },
           verticalAlignment: {
             type: 'integer',
-            title: 'Vertical Alignment',
+            title: 'Vertical Alignment (%)',
             minimum: 0,
             maximum: 100,
-            default: 50,
           },
           horizontalAlignment: {
             type: 'integer',
-            title: 'Horizontal Alignment',
+            title: 'Horizontal Alignment (%)',
             minimum: 0,
             maximum: 100,
-            default: 50,
           },
           textAlignment: {
             type: 'string',
             title: 'Text Alignment',
-            default: 'left',
             enum: [
-              'left', 'center', 'right',
+              '', 'left', 'center', 'right',
             ],
             enumNames: [
-              'Left', 'Center', 'Right',
+              'Inherit From Previous Breakpoint', 'Left', 'Center', 'Right',
             ],
           },
           color: {
             type: 'string',
             title: 'Color',
           },
-          font: {
+          fontFamily: {
             type: 'string',
             title: 'Font Family',
+          },
+          fontSize: {
+            type: 'integer',
+            title: 'Font Size (px)',
           },
           spans: {
             type: 'array',
@@ -72,13 +80,20 @@ export default {
             items: {
               type: 'object',
               properties: {
+                identity: {
+                  type: 'integer',
+                },
                 color: {
                   type: 'string',
                   title: 'Color',
                 },
-                font: {
+                fontFamily: {
                   type: 'string',
                   title: 'Font Family',
+                },
+                fontSize: {
+                  type: 'integer',
+                  title: 'Font Size (px)',
                 },
                 text: {
                   type: 'string',
@@ -93,32 +108,66 @@ export default {
   },
 };
 
+export const ref = {
+  globalIdentity: 1,
+};
+
 export const uiSchema = {
   screenWidth: {
     'ui:widget': 'range',
-    classNames: 'u-sticky',
   },
-  background: {
-    color: {
-      'ui:widget': 'color',
-    },
-  },
+  // background: {
+  //   verticalAlignment: {
+  //     'ui:widget': 'range',
+  //   },
+  //   horizontalAlignment: {
+  //     'ui:widget': 'range',
+  //   },
+  // },
   boxes: {
     items: {
-      verticalAlignment: {
-        'ui:widget': 'range',
+      identity: {
+        'ui:widget': props => (
+          <input
+            type="hidden"
+            value={props.value || (props.onChange(++ref.globalIdentity), ref.globalIdentity)}
+          />
+        ),
+        'ui:options': {
+          label: false,
+        },
       },
-      horizontalAlignment: {
-        'ui:widget': 'range',
-      },
-      color: {
-        'ui:widget': 'color',
-      },
+      // verticalAlignment: {
+      //   'ui:widget': 'range',
+      // },
+      // horizontalAlignment: {
+      //   'ui:widget': 'range',
+      // },
+      // color: {
+      //   'ui:widget': 'color',
+      // },
+      // fontSize: {
+      //   'ui:widget': 'range',
+      // },
       spans: {
         items: {
-          color: {
-            'ui:widget': 'color',
+          identity: {
+            'ui:widget': props => (
+              <input
+                type="hidden"
+                value={props.value || (props.onChange(++ref.globalIdentity), ref.globalIdentity)}
+              />
+            ),
+            'ui:options': {
+              label: false,
+            },
           },
+          // color: {
+          //   'ui:widget': 'color',
+          // },
+          // fontSize: {
+          //   'ui:widget': 'range',
+          // },
           text: {
             'ui:widget': 'textarea',
           },
@@ -126,4 +175,25 @@ export const uiSchema = {
       },
     },
   },
+};
+
+export const globalsSchema = {
+  type: 'object',
+  title: 'Slide Builder',
+  properties: {
+    slideName: {
+      type: 'string',
+      title: 'Slide Name',
+    },
+    fonts: {
+      type: 'array',
+      title: 'Fonts',
+      items: {
+        type: 'string',
+      },
+    },
+  },
+};
+
+export const globalsUiSchema = {
 };

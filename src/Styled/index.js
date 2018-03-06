@@ -1,17 +1,15 @@
-import DefaultForm from 'react-jsonschema-form';
 import styled from 'styled-components';
 
 export const Container = styled.div`
 display: flex;
-flex-direction: column;
 height: 100%;
 `;
 
 export const IframeContainer = styled.div`
-flex-shrink: 0;
-height: 40vh;
+height: 100%;
 overflow: hidden;
 position: relative;
+width: 100%;
 `;
 
 export const Iframe = styled.iframe`
@@ -25,17 +23,22 @@ transform-origin: center;
 width: 100%;
 `;
 
-export const Form = styled(DefaultForm)`
-flex-grow: 1;
-margin-top: 20px;
+export const DataContainer = styled.div`
+flex-shrink: 0;
 overflow: auto;
+padding: 20px 20px 0;
+width: 400px;
+
+& .form-group {
+  overflow: hidden;
+}
 `;
 
 export const SubmitWrap = styled.div`
 background: #fff;
 border-top: 1px solid #ccc;
 bottom: 0;
-padding-top: 20px;
+padding: 20px 0;
 position: sticky;
 `;
 
