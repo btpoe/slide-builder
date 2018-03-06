@@ -2,6 +2,40 @@ import ReactDOMServer from 'react-dom/server';
 import React from 'react';
 import get from 'lodash/get';
 
+const slopeCalc = (slopes) => {
+  if (!slopes[1]) {
+    return `${slopes[0].size}px`;
+  }
+  const upper = slopes[0];
+  const lower = slopes[1];
+  const slope = (upper.size - lower.size) / (upper.width - lower.width);
+  const intercept = lower.size - (lower.width * slope);
+  return `calc(${Math.round(slope * 10000) / 100}vw + ${intercept}px)`;
+};
+
+const nextFontSize = (bps, breakpoint, id) => {
+  const bp = bps.find(b =>
+    b.screenWidth > breakpoint.screenWidth &&
+    b.boxes.some(box =>
+      (box.identity === id && box.fontSize) ||
+      box.spans.some(span => span.identity === id && span.fontSize)));
+
+  if (!bp) return false;
+
+  const size = bp.boxes.reduce((res, box) => {
+    if (res) return res;
+
+    if (box.identity === id && box.fontSize) return box.fontSize;
+
+    const span = box.spans.find(s => s.identity === id && s.fontSize);
+    if (span) return span.fontSize;
+
+    return false;
+  }, false);
+
+  return { width: bp.screenWidth, size };
+};
+
 const prop = (p, value, transform = v => v) => {
   if (!p || !value) return '';
   const result = transform(value);
@@ -23,7 +57,7 @@ const styles = formData => [
     .i${box.identity} {
       ${prop('color', box.color)}
       ${prop('font-family', box.fontFamily)}
-      ${prop('font-size', box.fontSize, v => `${v}px`)}
+      ${prop('font-size', box.fontSize, v => slopeCalc([{ width: breakpoint.screenWidth, size: v }, nextFontSize(formData.breakpoints, breakpoint, box.identity)]))}
       ${prop('top', box.verticalAlignment, v => `${v}%`)}
       ${prop('left', box.horizontalAlignment, v => `${v}%`)}
       ${prop('transform', [box.horizontalAlignment, box.verticalAlignment], v => `translate(${-v[0]}%, ${-v[1]}%)`)}
@@ -33,7 +67,7 @@ const styles = formData => [
       .i${span.identity} {
         ${prop('color', span.color)}
         ${prop('font-family', span.fontFamily)}
-        ${prop('font-size', span.fontSize, v => `${v}px`)}
+        ${prop('font-size', span.fontSize, v => slopeCalc([{ width: breakpoint.screenWidth, size: v }, nextFontSize(formData.breakpoints, breakpoint, span.identity)]))}
       }
     `).join(' ')}
   `).join(' ')}
