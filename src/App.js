@@ -1,17 +1,20 @@
 import React, { Component } from 'react';
 import { List } from 'immutable';
 import { find, get, last, sortedIndexBy } from 'lodash';
-import Form from 'react-jsonschema-form';
-import schema, { uiSchema, globalsSchema, globalsUiSchema, ref } from './schema';
+import { Button } from 'material-ui';
+import globalsSchema from './schema';
+import Breakpoints from './Breakpoints';
+import { ref } from './Breakpoints/schema';
+import { spanTexts } from './Breakpoints/formData';
 import {
   Container,
   Iframe,
   IframeContainer,
   DataContainer,
   SubmitWrap,
-  FileUpload,
 } from './Styled';
 import output from './output';
+import Form from './Form';
 
 const clamp = (min, max, value) => Math.min(Math.max(value, min), max);
 
@@ -39,27 +42,15 @@ const iframeHeight = width => slopeCalc([
 ], clamp(320, 1440, width));
 
 export default class App extends Component {
-  constructor(props) {
-    super(props);
-
-    this.state = {
-      previewScreenWidth: 1024,
-      globals: {},
-      spanTexts: {},
-      breakpoints: List([{ screenWidth: 0 }]),
-      currentBreakpointIndex: 0,
-    };
-
-    this.handleLoad = this.handleLoad.bind(this);
-    this.handleBreakpointChange = this.handleBreakpointChange.bind(this);
-    this.handleGlobalsChange = this.handleGlobalsChange.bind(this);
-    this.handleAddBreakpoint = this.handleAddBreakpoint.bind(this);
-    this.handlePreviewScreenWidth = this.handlePreviewScreenWidth.bind(this);
+  state = {
+    previewScreenWidth: 1024,
+    globals: {},
+    breakpoints: List([{ screenWidth: 0 }]),
   }
 
   get data() {
-    const { globals, textBoxes, breakpoints } = this.state;
-    return { globals, textBoxes, breakpoints };
+    const { globals, breakpoints } = this.state;
+    return { globals, breakpoints, spanTexts };
   }
 
   get output() {
@@ -76,54 +67,23 @@ export default class App extends Component {
     return get(this.state.globals, 'slideName', 'slide').replace(/\s/g, '_');
   }
 
-  get currentBreakpoint() {
-    return this.state.breakpoints.get(this.state.currentBreakpointIndex) || {};
+  handleBreakpointChange = ({ formData }) => {
+    this.setState({ breakpoints: formData });
   }
 
-  set currentBreakpoint(breakpointData) {
-    const bpChanged = breakpointData.screenWidth !== this.currentBreakpoint.screenWidth;
-    let breakpoints = this.state.breakpoints.set(this.state.currentBreakpointIndex, breakpointData);
-
-    const spanTexts = {};
-    breakpointData.boxes.forEach(box => (box.spans || []).forEach((span) => {
-      spanTexts[span.identity] = span.text;
-      Object.defineProperty(span, 'text', {
-        get: () => this.state.spanTexts[span.identity],
-      });
-    }));
-
-    if (bpChanged) {
-      breakpoints = breakpoints.sortBy(bp => bp.screenWidth);
-      this.setState({ currentBreakpointIndex: breakpoints.indexOf(breakpointData) });
-    }
-    this.setState({ breakpoints, spanTexts });
-  }
-
-  setActiveBreakpoint(currentBreakpointIndex) {
-    return (e) => {
-      e.preventDefault();
-      this.setState({ currentBreakpointIndex });
-    };
-  }
-
-  handleBreakpointChange({ formData }) {
-    this.currentBreakpoint = formData;
-  }
-
-  handleGlobalsChange({ formData }) {
+  handleGlobalsChange = ({ formData }) => {
     this.setState({ globals: formData });
   }
 
-  handleAddBreakpoint() {
-    const form = this;
+  handleAddBreakpoint = () => {
     const newBreakpoint = { screenWidth: this.state.previewScreenWidth, boxes: [] };
 
-    this.state.breakpoints.first().boxes.forEach((box) => {
+    (this.state.breakpoints.first().boxes || []).forEach((box) => {
       newBreakpoint.boxes.push({
         identity: box.identity,
         spans: box.spans.map(span => ({
           identity: span.identity,
-          get text() { return form.state.spanTexts[span.identity]; },
+          get text() { return spanTexts[span.identity]; },
         })),
       });
     });
@@ -133,16 +93,11 @@ export default class App extends Component {
     });
   }
 
-  handlePreviewScreenWidth(e) {
-    const previewScreenWidth = e.currentTarget.value;
-    this.setState({
-      previewScreenWidth,
-      currentBreakpointIndex: this.state.breakpoints.findLastIndex(bp =>
-        bp.screenWidth <= previewScreenWidth),
-    });
+  handlePreviewScreenWidth = (e) => {
+    this.setState({ previewScreenWidth: e.currentTarget.value });
   }
 
-  handleLoad(e) {
+  handleLoad = (e) => {
     const file = get(e, 'target.files[0]');
 
     if (!file) return;
@@ -150,63 +105,68 @@ export default class App extends Component {
     const reader = new window.FileReader();
 
     reader.onload = () => {
-      const { globals, textBoxes, breakpoints } = JSON.parse(reader.result);
+      const { globals, spanTexts: importedSpanTexts, breakpoints } = JSON.parse(reader.result);
       ref.globalIdentity = breakpoints[0].boxes.reduce(
         (max, box) => Math.max(max, box.identity, ...(box.spans || []).map(span => span.identity)),
         1,
       );
-      this.setState({ globals, textBoxes, breakpoints: List(breakpoints) });
+      Object.assign(spanTexts, importedSpanTexts);
+      this.setState({ globals, breakpoints: List(breakpoints) });
     };
 
     reader.readAsText(file);
   }
 
   render() {
+    const { breakpoints } = this.state;
+
     return (
       <Container>
         <DataContainer>
           <Form
             schema={globalsSchema}
-            uiSchema={globalsUiSchema}
             formData={this.state.globals}
             onChange={this.handleGlobalsChange}
-          >
-            <div />
-          </Form>
-          <ul className="nav nav-pills">
-            {this.state.breakpoints.map((breakpoint, i) => (
-              <li className="nav-item" key={i}>
-                <button
-                  className={`btn btn-${this.state.currentBreakpointIndex === i ? 'primary' : 'secondary'}`}
-                  onClick={this.setActiveBreakpoint(i)}
-                >
-                  {breakpoint.screenWidth}
-                </button>
-              </li>
-            ))}
-            <li className="nav-item">
-              <button className="btn btn-info" onClick={this.handleAddBreakpoint}>+ Breakpoint</button>
-            </li>
-          </ul>
-          <Form
-            schema={schema}
-            uiSchema={uiSchema}
-            formData={this.currentBreakpoint}
+          />
+          <Breakpoints
+            breakpoints={breakpoints}
+            handleAddBreakpoint={this.handleAddBreakpoint}
             onChange={this.handleBreakpointChange}
-          >
-            <SubmitWrap className="btn-toolbar">
-              <div className="btn-group">
-                <a href={`data:text/html,${this.output}`} download={`${this.fileName}.html`} className="btn btn-info">Download</a>
-              </div>
-              <div className="btn-group">
-                <a href={`data:application/json,${JSON.stringify(this.data).replace(/\s/g, '%20')}`} download={`${this.fileName}.json`} className="btn btn-info">Save</a>
-                <FileUpload className="btn btn-info">
-                  Load
-                  <input type="file" onChange={this.handleLoad} />
-                </FileUpload>
-              </div>
-            </SubmitWrap>
-          </Form>
+          />
+          <SubmitWrap>
+            <Button
+              color="primary"
+              component="a"
+              href={`data:text/html,${this.output}`}
+              download={`${this.fileName}.html`}
+              style={{ marginRight: '12px' }}
+              variant="raised"
+            >
+              Download
+            </Button>
+
+            <Button
+              color="secondary"
+              component="a"
+              href={`data:application/json,${JSON.stringify(this.data).replace(/\s/g, '%20')}`}
+              download={`${this.fileName}.json`}
+              style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
+              variant="raised"
+            >
+              Save
+            </Button>
+
+            <label>
+              <input
+                onChange={this.handleLoad}
+                style={{ display: 'none' }}
+                type="file"
+              />
+              <Button variant="raised" component="span" style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}>
+                Load
+              </Button>
+            </label>
+          </SubmitWrap>
         </DataContainer>
         <IframeContainer>
           <Iframe
