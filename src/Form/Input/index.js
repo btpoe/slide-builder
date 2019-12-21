@@ -3,10 +3,10 @@ import { TextField, Checkbox } from 'material-ui';
 import Range from './Range';
 
 const getField = ({
-  type, id, onChange, title, minimum, maximum, value,
+  type, title, id, onChange, value, ...misc
 }, disabled) => {
   const commonProps = {
-    label: title, id, onChange, disabled, value,
+    label: title, id, onChange, value, disabled,
   };
 
   if (type === 'textarea') {
@@ -20,8 +20,8 @@ const getField = ({
     case 'range':
       return (
         <Range
-          min={minimum}
-          max={maximum}
+          min={misc.minimum}
+          max={misc.maximum}
           helperText="Some important text"
           {...commonProps}
         />
